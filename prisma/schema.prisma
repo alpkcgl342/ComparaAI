@@ -84,6 +84,9 @@ model Article {
   author      String?
   status      String   @default("draft")
   isPublished Boolean  @default(false)
+  aiImportance   String?
+  aiWhyItMatters String?
+  aiWhoItAffects String?
   publishedAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -75,6 +75,9 @@ export class ArticleService {
       status: string;
       isPublished: boolean;
       publishedAt: Date;
+      aiImportance: string;
+      aiWhyItMatters: string;
+      aiWhoItAffects: string;
     }>,
   ) {
     const updateData: {

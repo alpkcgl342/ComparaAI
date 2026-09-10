@@ -7,10 +7,22 @@ import {
   Patch,
   Post,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { mkdirSync } from 'fs';
+import { randomUUID } from 'crypto';
 
 import { ArticleService } from './article.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+
+const uploadDirectory = './uploads/articles';
+
+mkdirSync(uploadDirectory, { recursive: true });
 
 @Controller('articles')
 export class ArticleController {
@@ -28,9 +40,50 @@ export class ArticleController {
       imageUrl?: string;
       author?: string;
       status?: string;
+      aiImportance?: string;
+      aiWhyItMatters?: string;
+      aiWhoItAffects?: string;
     },
   ) {
     return this.articleService.create(data);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('upload-image')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: uploadDirectory,
+        filename: (_req, file, callback) => {
+          const extension = extname(file.originalname).toLowerCase();
+          callback(null, `${randomUUID()}${extension}`);
+        },
+      }),
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5 MB
+      },
+      fileFilter: (_req, file, callback) => {
+        const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!allowedMimeTypes.includes(file.mimetype)) {
+          return callback(
+            new BadRequestException(
+              'Sadece JPG, PNG veya WEBP görseller yüklenebilir.',
+            ),
+            false,
+          );
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  uploadImage(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('Görsel seçilmedi.');
+    }
+    return {
+      url: `/uploads/articles/${file.filename}`,
+      filename: file.filename,
+    };
   }
 
   @Get()
@@ -66,6 +119,9 @@ export class ArticleController {
       imageUrl?: string;
       author?: string;
       status?: string;
+      aiImportance?: string;
+      aiWhyItMatters?: string;
+      aiWhoItAffects?: string;
     },
   ) {
     return this.articleService.update(id, data);
