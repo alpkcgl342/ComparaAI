@@ -45,6 +45,8 @@ export class ArticleController {
       aiImportance?: string;
       aiWhyItMatters?: string;
       aiWhoItAffects?: string;
+      seoMetaDescription?: string;
+      tags?: string[];
     },
   ) {
     return this.articleService.create(data);
@@ -134,6 +136,8 @@ export class ArticleController {
       aiImportance?: string;
       aiWhyItMatters?: string;
       aiWhoItAffects?: string;
+      seoMetaDescription?: string;
+      tags?: string[];
     },
   ) {
     return this.articleService.update(id, data);

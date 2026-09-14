@@ -16,6 +16,11 @@ export class ArticleService {
     status?: string;
     isPublished?: boolean;
     publishedAt?: Date;
+    aiImportance?: string;
+    aiWhyItMatters?: string;
+    aiWhoItAffects?: string;
+    seoMetaDescription?: string;
+    tags?: string[];
   }) {
     const status = data.status ?? 'draft';
 
@@ -165,6 +170,8 @@ export class ArticleService {
       aiImportance: string;
       aiWhyItMatters: string;
       aiWhoItAffects: string;
+      seoMetaDescription: string;
+      tags: string[];
     }>,
   ) {
     const updateData: {

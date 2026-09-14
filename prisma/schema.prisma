@@ -89,6 +89,8 @@ model Article {
   aiImportance   String?
   aiWhyItMatters String?
   aiWhoItAffects String?
+  seoMetaDescription String? // Faz 2 — AI Editör önerisi
+  tags               String[] @default([]) // Faz 2 — AI Editör önerisi
   publishedAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
