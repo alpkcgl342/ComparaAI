@@ -48,6 +48,8 @@ model Product {
   updatedAt   DateTime   @updatedAt
 
   priceHistory PriceHistory[]
+  aiScore      ProductAiScore?
+  entityLinks  ArticleEntity[]
 
   @@index([categoryId])
   @@index([brand])
@@ -90,4 +92,170 @@ model Article {
   publishedAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  entities         ArticleEntity[]
+  notifications    AiNotification[]
+  duplicatesOf     ArticleDuplicate[] @relation("ArticleDuplicateSource")
+  duplicatedBy     ArticleDuplicate[] @relation("ArticleDuplicateTarget")
+}
+
+// ==========================================================================
+// Faz 1 — AI modülü şema eklemeleri (roadmap: COMPARAAI_AI_ROADMAP.md)
+//
+// Not: Roadmap "products"/"news" ve uuid id'ler varsayıyordu; burada mevcut
+// Product/Article modellerine ve cuid id'lere uyarlandı. RLS politikaları bu
+// tabloları Supabase'in PostgREST/Auth katmanından doğrudan erişime karşı
+// korur — şu an tüm erişim NestJS backend'i (doğrudan Postgres bağlantısı,
+// RLS'i bypass eder) üzerinden gittiği için bu politikalar şimdilik "hareketsiz"
+// durumda; ileride web/admin'den doğrudan Supabase client kullanılırsa devreye girer.
+// ==========================================================================
+
+// Ürün segmenti tanımları (admin panelden fiyat aralığı düzenlenebilir).
+// Product.segment alanı (string) ile senkron tutulmalı; bu tablo şu an için
+// sadece segment meta verisini (aralık, açıklama) tutuyor, Product'a henüz
+// FK ile bağlı değil (Faz 3 P0'da "segment sistemi" uygulanırken bağlanacak).
+model Segment {
+  id          String   @id @default(cuid())
+  key         String   @unique // "ekonomik" | "orta" | "ust"
+  label       String
+  minPrice    Decimal?
+  maxPrice    Decimal?
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+// Ürün başına AI puanlaması (Faz 3 P0 — "AI Ürün Skoru").
+model ProductAiScore {
+  id     String @id @default(cuid())
+
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String  @unique
+
+  overallScore     Decimal // 0-100
+  performanceScore Decimal?
+  cameraScore      Decimal?
+  batteryScore     Decimal?
+  softwareScore    Decimal?
+  valueScore       Decimal? // fiyat/performans
+  useCaseScore     Json? // {"oyun":85,"is":70,"fotografcilik":60,...}
+  futureProofScore Decimal?
+
+  aiSummary  String?  @db.Text
+  bestFor    String[] // "kime uygun"
+  notFor     String[] // "kime uygun değil"
+  weaknesses Json? // AI eksileri bulucu çıktısı
+
+  modelVersion String?
+  computedAt   DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Kullanıcı profili / ihtiyaç bazlı öneri (Faz 5 — kişiselleştirme).
+// id, Supabase auth.users.id ile birebir eşleşir (henüz web/admin'de
+// Supabase Auth login akışı kurulmadı — bu tablo o akış kurulduğunda
+// dolmaya başlayacak; şimdiden hazır).
+model UserProfile {
+  id               String   @id // = auth.users.id
+  persona          String? // 'ogrenci' | 'oyuncu' | 'yazilimci' | 'fotografci' | ...
+  budgetMin        Decimal?
+  budgetMax        Decimal?
+  priorities       Json? // {"kamera":5,"batarya":3,...}
+  followedEntities String[] // ["Apple","NVIDIA"]
+  techMemory       Json? // kişisel teknoloji hafızası (geçmiş sorgular/tercihler özeti)
+  expertiseLevel   String   @default("normal") // 'basit' | 'normal' | 'teknik' | 'uzman'
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// Karşılaştırma oturumları (2-20 ürün).
+model AiComparison {
+  id         String   @id @default(cuid())
+  userId     String? // = auth.users.id, giriş yapmamış kullanıcı için null
+  productIds String[] // Product.id listesi
+  scenario   String? // senaryo bazlı karşılaştırma için ("seyahat", "ofis", "oyun" vb.)
+  result     Json
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Doğal dil ürün arama logu.
+model AiSearchQuery {
+  id               String   @id @default(cuid())
+  userId           String?
+  query            String
+  parsedFilters    Json?
+  resultProductIds String[]
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Haber (Article) <-> Ürün / Şirket ilişkilendirme (Faz 2 — NER).
+model ArticleEntity {
+  id         String  @id @default(cuid())
+  article    Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  articleId  String
+  entityType String // 'company' | 'product' | 'technology'
+  entityName String
+  product    Product? @relation(fields: [productId], references: [id])
+  productId  String?
+  confidence Decimal?
+
+  @@index([articleId])
+  @@index([productId])
+}
+
+// Duplicate haber tespiti (Faz 2).
+model ArticleDuplicate {
+  id                   String   @id @default(cuid())
+  article              Article  @relation("ArticleDuplicateSource", fields: [articleId], references: [id], onDelete: Cascade)
+  articleId            String
+  duplicateOfArticle   Article  @relation("ArticleDuplicateTarget", fields: [duplicateOfArticleId], references: [id], onDelete: Cascade)
+  duplicateOfArticleId String
+  similarityScore      Decimal
+  detectedAt           DateTime @default(now())
+
+  @@index([articleId])
+  @@index([duplicateOfArticleId])
+}
+
+// Teknoloji ansiklopedisi (Faz 4).
+model TechGlossaryTerm {
+  id                   String   @id @default(cuid())
+  term                 String   @unique
+  explanationSimple    String?  @db.Text
+  explanationNormal    String?  @db.Text
+  explanationTechnical String?  @db.Text
+  explanationExpert    String?  @db.Text
+  category             String?
+  relatedTerms         String[]
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+// Bildirimler / takip sistemi (Faz 5).
+model AiNotification {
+  id         String   @id @default(cuid())
+  userId     String
+  entityName String?
+  title      String
+  body       String   @db.Text
+  article    Article? @relation(fields: [articleId], references: [id])
+  articleId  String?
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Haftalık / trend raporlar (Faz 6).
+model AiReport {
+  id          String    @id @default(cuid())
+  type        String // 'weekly' | 'daily_best' | 'trend' | 'company_analysis'
+  title       String?
+  content     Json
+  periodStart DateTime? @db.Date
+  periodEnd   DateTime? @db.Date
+  createdAt   DateTime  @default(now())
 }
