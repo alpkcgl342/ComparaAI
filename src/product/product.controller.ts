@@ -25,6 +25,7 @@ import { randomUUID } from "crypto";
 import { ProductService } from "./product.service";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
+import { SaveAiScoreDto } from "./dto/ai-score.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 
 const uploadDirectory = "./uploads/products";
@@ -143,5 +144,17 @@ export class ProductController {
   @Delete(":id")
   remove(@Param("id") id: string) {
     return this.productService.remove(id);
+  }
+
+  // Faz 3 P0 — AI Ürün Skoru. Admin panel comparaai-ai'nin /score-product
+  // endpoint'ini kendisi çağırır (haber analizindeki pattern ile aynı),
+  // sonucu buraya kaydettirir.
+  @UseGuards(JwtAuthGuard)
+  @Post(":id/ai-score")
+  saveAiScore(
+    @Param("id") id: string,
+    @Body() dto: SaveAiScoreDto,
+  ) {
+    return this.productService.upsertAiScore(id, dto);
   }
 }

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { SaveAiScoreDto } from './dto/ai-score.dto';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -77,6 +78,7 @@ async findAll(filters: {
 
     include: {
       category: true,
+      aiScore: true,
     },
   });
 
@@ -115,7 +117,37 @@ async findAll(filters: {
   findOne(id: string) {
     return this.prisma.product.findUnique({
       where: { id },
-      include: { category: true },
+      include: { category: true, aiScore: true },
+    });
+  }
+
+  // Faz 3 P0 — AI Ürün Skoru.
+  // Puanı comparaai-ai üretmiyor burada; admin panel comparaai-ai'ye
+  // (haber analizinde olduğu gibi) doğrudan tarayıcıdan istek atıp sonucu
+  // burada kaydediyor. Bu endpoint sadece sonucu ProductAiScore'a upsert eder.
+  upsertAiScore(productId: string, dto: SaveAiScoreDto) {
+    const data = {
+      overallScore: dto.overall_score,
+      performanceScore: dto.performance_score ?? null,
+      cameraScore: dto.camera_score ?? null,
+      batteryScore: dto.battery_score ?? null,
+      softwareScore: dto.software_score ?? null,
+      valueScore: dto.value_score ?? null,
+      useCaseScore: (dto.use_case_score ??
+        undefined) as Prisma.InputJsonValue,
+      futureProofScore: dto.future_proof_score ?? null,
+      aiSummary: dto.ai_summary,
+      bestFor: dto.best_for ?? [],
+      notFor: dto.not_for ?? [],
+      weaknesses: (dto.weaknesses ?? []) as Prisma.InputJsonValue,
+      suggestedSegment: dto.suggested_segment ?? null,
+      modelVersion: 'gemini-3.6-flash',
+    };
+
+    return this.prisma.productAiScore.upsert({
+      where: { productId },
+      create: { productId, ...data },
+      update: data,
     });
   }
 

@@ -145,6 +145,12 @@ model ProductAiScore {
   notFor     String[] // "kime uygun değil"
   weaknesses Json? // AI eksileri bulucu çıktısı
 
+  // AI'ın specs+fiyata bakarak önerdiği segment — Product.segment'i OTOMATİK
+  // EZMEZ, sadece admin panelde "AI önerisi: orta segment" şeklinde gösterilip
+  // admin'in kararına bırakılır (gerçek TL fiyat aralığı verimiz olmadığı için
+  // segmenti kendiliğinden değiştirmek yanlış olurdu).
+  suggestedSegment String? // 'ekonomik' | 'orta' | 'ust'
+
   modelVersion String?
   computedAt   DateTime @default(now())
   updatedAt    DateTime @updatedAt
