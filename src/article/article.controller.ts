@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -102,6 +103,16 @@ export class ArticleController {
     return this.articleService.findBySlug(slug);
   }
 
+  // Faz 2 — Duplicate haber tespiti için aday listesi (son N gün, kendisi hariç).
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/duplicate-candidates')
+  findDuplicateCandidates(
+    @Param('id') id: string,
+    @Query('days') days?: string,
+  ) {
+    return this.articleService.findRecentExcluding(id, Number(days) || 7);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.articleService.findOne(id);
@@ -143,5 +154,22 @@ export class ArticleController {
     @Body() body: { entities: SaveEntityDto[] },
   ) {
     return this.articleService.saveEntities(id, body.entities ?? []);
+  }
+
+  // Faz 2 — comparaai-ai'nin /detect-duplicates sonucunu kaydeder.
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/duplicates')
+  saveDuplicates(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      duplicates: {
+        article_id: string;
+        similarity_score: number;
+        reason?: string;
+      }[];
+    },
+  ) {
+    return this.articleService.saveDuplicates(id, body.duplicates ?? []);
   }
 }

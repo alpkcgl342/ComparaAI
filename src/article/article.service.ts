@@ -40,6 +40,54 @@ export class ArticleService {
     });
   }
 
+  // Faz 2 — Duplicate haber tespiti için aday listesi: son N gün içinde
+  // eklenmiş, kendisi hariç diğer haberler.
+  findRecentExcluding(excludeId: string, days: number) {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    return this.prisma.article.findMany({
+      where: {
+        id: { not: excludeId },
+        createdAt: { gte: since },
+      },
+      select: { id: true, title: true, summary: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // comparaai-ai'nin /detect-duplicates yanıtını kaydeder. Yeniden
+  // çalıştırılabilir olsun diye önce bu makaleye ait eski kayıtları siler.
+  async saveDuplicates(
+    articleId: string,
+    duplicates: {
+      article_id: string;
+      similarity_score: number;
+      reason?: string;
+    }[],
+  ) {
+    await this.prisma.articleDuplicate.deleteMany({
+      where: { articleId },
+    });
+
+    if (duplicates.length === 0) {
+      return [];
+    }
+
+    await this.prisma.articleDuplicate.createMany({
+      data: duplicates.map((d) => ({
+        articleId,
+        duplicateOfArticleId: d.article_id,
+        similarityScore: d.similarity_score,
+      })),
+    });
+
+    return this.prisma.articleDuplicate.findMany({
+      where: { articleId },
+      include: { duplicateOfArticle: true },
+    });
+  }
+
   findPublished() {
     return this.prisma.article.findMany({
       where: {
@@ -56,6 +104,7 @@ export class ArticleService {
       where: { id },
       include: {
         entities: { include: { product: true } },
+        duplicatesOf: { include: { duplicateOfArticle: true } },
       },
     });
   }
