@@ -18,6 +18,7 @@ import { mkdirSync } from 'fs';
 import { randomUUID } from 'crypto';
 
 import { ArticleService } from './article.service';
+import { SaveEntityDto } from './dto/save-entities.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 const uploadDirectory = './uploads/articles';
@@ -131,5 +132,16 @@ export class ArticleController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.articleService.remove(id);
+  }
+
+  // Faz 2 — admin panel comparaai-ai'nin /extract-entities'ini kendisi
+  // çağırır (AI ürün puanlamasındaki pattern ile aynı), sonucu buraya kaydettirir.
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/entities')
+  saveEntities(
+    @Param('id') id: string,
+    @Body() body: { entities: SaveEntityDto[] },
+  ) {
+    return this.articleService.saveEntities(id, body.entities ?? []);
   }
 }

@@ -54,6 +54,44 @@ export class ArticleService {
   findOne(id: string) {
     return this.prisma.article.findUnique({
       where: { id },
+      include: {
+        entities: { include: { product: true } },
+      },
+    });
+  }
+
+  // Faz 2 — Haberden bilgi çıkarma (NER) + Haber<->Ürün bağlantısı.
+  // comparaai-ai'nin /extract-entities yanıtını (admin panelden, tarayıcıdan
+  // doğrudan çağrılmış) kaydeder. Yeniden çalıştırılabilir olsun diye önce
+  // bu makaleye ait eski entity'leri siler.
+  async saveEntities(
+    articleId: string,
+    entities: {
+      entity_type: string;
+      entity_name: string;
+      product_id?: string | null;
+      confidence?: number | null;
+    }[],
+  ) {
+    await this.prisma.articleEntity.deleteMany({ where: { articleId } });
+
+    if (entities.length === 0) {
+      return [];
+    }
+
+    await this.prisma.articleEntity.createMany({
+      data: entities.map((e) => ({
+        articleId,
+        entityType: e.entity_type,
+        entityName: e.entity_name,
+        productId: e.product_id ?? null,
+        confidence: e.confidence ?? null,
+      })),
+    });
+
+    return this.prisma.articleEntity.findMany({
+      where: { articleId },
+      include: { product: true },
     });
   }
 
