@@ -7,6 +7,7 @@ import { CategoryModule } from './category/category.module';
 import { ProductModule } from './product/product.module';
 import { AuthModule } from './auth/auth.module';
 import { ComparisonModule } from './comparison/comparison.module';
+import { GlossaryModule } from './glossary/glossary.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ComparisonModule } from './comparison/comparison.module';
     AuthModule,
     ArticleModule,
     ComparisonModule,
+    GlossaryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
