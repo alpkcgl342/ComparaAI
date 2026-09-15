@@ -8,6 +8,7 @@ import { ProductModule } from './product/product.module';
 import { AuthModule } from './auth/auth.module';
 import { ComparisonModule } from './comparison/comparison.module';
 import { GlossaryModule } from './glossary/glossary.module';
+import { ReportModule } from './report/report.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { GlossaryModule } from './glossary/glossary.module';
     ArticleModule,
     ComparisonModule,
     GlossaryModule,
+    ReportModule,
   ],
   controllers: [AppController],
   providers: [AppService],
